@@ -1,0 +1,32 @@
+{
+  "name": "pi-mode-manager",
+  "version": "1.0.0",
+  "description": "Claude Code-style Plan/Auto/Edit mode manager for pi coding agent",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pkulyn/pi-mode-manager.git"
+  },
+  "keywords": [
+    "pi",
+    "pi-coding-agent",
+    "extension",
+    "plan-mode",
+    "mode-manager",
+    "claude-code"
+  ],
+  "engines": {
+    "node": ">=23.6"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": ">=0.80.0",
+    "@earendil-works/pi-tui": ">=0.4.0"
+  },
+  "scripts": {
+    "test": "node --test \"test/**/*.test.ts\""
+  },
+  "pi": {
+    "extensions": ["./index.ts"]
+  }
+}
