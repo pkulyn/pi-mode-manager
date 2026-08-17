@@ -37,11 +37,7 @@ The live todo widget sits below the editor: a `Plan (2/5)` heading on a timeline
 pi install git:github.com/pkulyn/pi-mode-manager@v1
 ```
 
-### From npm
-
-```bash
-pi install npm:pi-mode-manager
-```
+> ℹ️ **npm**: this package is not published to the npm registry — the name `pi-mode-manager` there belongs to an unrelated project by another author. Install from GitHub above (or manually below) instead.
 
 ### Manual
 
