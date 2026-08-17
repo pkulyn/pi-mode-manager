@@ -12,11 +12,17 @@ The agent produces a numbered plan, the extension tracks its steps in a live tod
 
 ![modes](https://img.shields.io/badge/modes-Plan%20%7C%20Auto%20%7C%20Edit-4f8ef7)
 
+## Screenshot
+
+![Todo widget](docs/todo-widget.jpg)
+
+The live todo widget sits below the editor: a `Plan (2/5)` heading on a timeline, with completed (`✓`), in-progress (`◐`) and pending (`○`) glyphs, a progress counter that ticks up as steps complete, and an auto-hide + 🎉 notification when the whole plan finishes.
+
 ## Features
 
 - 🔄 **`Alt+M`** cycles modes: Plan → Auto → Edit
 - 🔒 **Hard gate** on tool calls — Plan mode rejects `edit`/`write`/`bash` before the agent sees them; Edit mode prompts for bash approval
-- 📋 **Live todo widget** (below the editor) — numbered plan steps with progress counter (`Plan (2/5)`), pending/current/done glyphs, auto-hides when the plan completes
+- 📋 **Live todo widget** (below the editor) — numbered plan steps with progress counter (`Plan (2/5)`), pending/current/done glyphs (`◐`/`○`/`✓`) **colored to match the active mode** (teal in Plan, orange-red in Auto, blue in Edit), auto-hides when the plan completes
 - ✨ **Two-column layout** — todo lists > 5 items split into side-by-side columns (CJK-width aware, truncation-safe)
 - ✅ **`[DONE:n]` protocol** — cumulative semantics: `[DONE:3]` marks steps 1–3 complete; `[DONE:all]`/`[DONE:*]` marks everything
 - 🧠 **Mode instructions injected into context** — the agent knows which mode is active and what its rules are
@@ -87,11 +93,13 @@ Plan:
 
 Cumulative semantics: `[DONE:2]` marks steps 1 *and* 2 complete (plan steps execute in order). `n` may exceed the list length (the agent may count its own steps). `[DONE:all]` / `[DONE:*]` mark every step complete.
 
+Only **standalone** markers count — markers inside range/list expressions such as `[DONE:1]~[DONE:5]` (prose examples) are ignored, so text that merely mentions the marker syntax cannot false-complete steps.
+
 ## How it works
 
 - **Tool gating** — `tool_call` interception returns `{ block: true, reason }` for disallowed tools; no shell-level sandboxing
 - **Plan extraction** — scans assistant messages for `Plan:` headers + numbered lists (`extractTodoItems`), cleans step text (verb-stripping, markdown removal, truncation)
-- **Progress tracking** — `turn_end` parses `[DONE:n]` markers; completion state is rebuilt from session history on restore, so the widget survives restarts
+- **Progress tracking** — `turn_end` parses `[DONE:n]` markers (standalone only; range expressions ignored); the completion toast fires only when a turn actually transitions the plan to fully done, so it never re-fires on a restored/already-finished plan. Completion state is rebuilt from session history on restore, so the widget survives restarts
 - **Context injection** — `before_agent_start` inserts mode instructions (tagged `customType`) filtered by `context` interception
 
 ## Development
@@ -105,7 +113,7 @@ Tests cover the pure utilities (`utils.ts`): plan extraction, `[DONE:n]` cumulat
 ## Compatibility notes
 
 - Uses pi's public extension APIs (`setActiveTools`/`getActiveTools`, `ctx.ui.setWidget`, `appendEntry`, lifecycle events) — see [extensions.md](https://github.com/earendil-works/pi/blob/main/docs/extensions.md)
-- Mode colors are hard-coded ANSI (warm orange / green / blue); adjust `MODE_ANSI` in `index.ts` to taste
+- Mode colors are hard-coded ANSI (`MODE_ANSI` in `index.ts` — Plan teal / Auto orange-red / Edit blue), and the todo widget glyphs follow the active mode color; adjust to taste
 - If the official pi plan mode ever lands, this extension can serve as a migration reference
 
 ## License

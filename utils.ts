@@ -33,7 +33,7 @@ export function cleanStepText(text: string): string {
 /** Extract numbered plan steps from a "Plan:" section. */
 export function extractTodoItems(message: string): TodoItem[] {
 	const items: TodoItem[] = [];
-	const headerMatch = message.match(/\*{0,2}Plan:\*{0,2}\s*\n/i);
+	const headerMatch = message.match(/\*{0,2}Plan:\*{0,2}[^\n]*\n/i);
 	if (!headerMatch) return items;
 
 	const planSection = message.slice(message.indexOf(headerMatch[0]) + headerMatch[0].length);
@@ -119,10 +119,15 @@ export function truncateToWidth(text: string, maxWidth: number): string {
 	return `${out}\x1b[0m…`;
 }
 
-/** Extract [DONE:n] / [DONE:all] markers from an assistant message. */
+/** Extract [DONE:n] / [DONE:all] markers from an assistant message.
+ *
+ * Only standalone markers count: markers inside range/list expressions such
+ * as "[DONE:1]~[DONE:5]" or "[DONE:1]-[DONE:3]" (prose examples) are
+ * ignored, so mentioning marker syntax in text cannot false-complete steps.
+ */
 export function extractDoneSteps(message: string): Array<number | "all"> {
 	const steps: Array<number | "all"> = [];
-	for (const match of message.matchAll(/\[DONE:(\d+|all|\*)\]/gi)) {
+	for (const match of message.matchAll(/(?<![~\-])\[DONE:(\d+|all|\*)\](?![~\-])/gi)) {
 		const raw = match[1].toLowerCase();
 		if (raw === "all" || raw === "*") {
 			steps.push("all");

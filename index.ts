@@ -44,10 +44,10 @@ const MODE_LABEL: Record<Mode, string> = {
 };
 
 // ANSI colors for mode status (theme-independent)
-// plan = warm orange (truecolor #F37021), auto = dark green 22, edit = dark blue 26
+// plan = teal #009688, auto = orange-red #F37021, edit = dark blue 26
 const MODE_ANSI: Record<Mode, string> = {
-	plan: "\x1b[38;2;243;112;33m",
-	auto: "\x1b[38;5;22m",
+	plan: "\x1b[38;2;0;150;136m",
+	auto: "\x1b[38;2;243;112;33m",
 	edit: "\x1b[38;5;26m",
 };
 const ANSI_RESET = "\x1b[39m";
@@ -234,10 +234,10 @@ export default function modeManagerExtension(pi: ExtensionAPI): void {
 			let glyph: string;
 			let subject: string;
 			if (item.completed) {
-				glyph = `${MODE_ANSI.auto}✓${ANSI_RESET}`;
+				glyph = `${MODE_ANSI[mode]}✓${ANSI_RESET}`; // follows active mode color
 				subject = theme.fg("dim", theme.strikethrough(item.text));
 			} else if (item === firstPending) {
-				glyph = `${MODE_ANSI.plan}◐${ANSI_RESET}`;
+				glyph = `${MODE_ANSI[mode]}◐${ANSI_RESET}`; // follows active mode color
 				subject = theme.fg("text", item.text);
 			} else {
 				glyph = theme.fg("dim", "○");
@@ -470,11 +470,15 @@ export default function modeManagerExtension(pi: ExtensionAPI): void {
 		if (!isAssistantMessage(event.message)) return;
 
 		const text = getTextContent(event.message);
-		markCompletedSteps(text, todoItems);
-
-		// Notify once when the whole plan just finished (widget then hides)
+		// Count how many NEW steps this turn's [DONE:n] markers marked complete
+		const updated = markCompletedSteps(text, todoItems);
 		const completed = todoItems.filter((t) => t.completed).length;
-		if (todoItems.length > 0 && completed === todoItems.length && !allDoneNotified) {
+
+		// Notify ONLY when THIS turn transitioned the plan to fully complete.
+		// (allDoneNotified is not persisted: after a restart/session restore the
+		// todos come back already-completed, so without the `updated > 0` guard a
+		// stale completed plan would re-fire the completion toast on every turn.)
+		if (completed === todoItems.length && updated > 0 && !allDoneNotified) {
 			allDoneNotified = true;
 			if (ctx.hasUI) {
 				ctx.ui.notify("🎉 Plan completed — todo list collapsed (/todos to review)", "info");

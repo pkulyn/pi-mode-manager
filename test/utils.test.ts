@@ -60,6 +60,17 @@ describe("extractTodoItems", () => {
 		assert.equal(items.length, 3);
 		assert.equal(items[0].text, "Old step");
 	});
+
+	test("accepts a same-line title after Plan: (## Plan: <title>)", () => {
+		const msg = "## Plan: ework 收尾 + AGENTS.md 精简\n\n1. **删除已失效的 JWT 文件**\n2. **AGENTS.md 新增保密章节**\n3. 同步更新记忆文档";
+		const items = extractTodoItems(msg);
+		assert.equal(items.length, 3);
+		assert.deepEqual(
+			items.map((i) => i.step),
+			[1, 2, 3],
+		);
+		assert.equal(items[0].text, "删除已失效的 JWT 文件");
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -93,19 +104,30 @@ describe("cleanStepText", () => {
 // extractDoneSteps / markCompletedSteps
 // ---------------------------------------------------------------------------
 
-describe("extractDoneSteps", () => {
-	test("parses multiple markers, case-insensitive", () => {
-		assert.deepEqual(extractDoneSteps("[DONE:1] [done:2] [DONE:ALL]"), [1, 2, "all"]);
-	});
+	describe("extractDoneSteps", () => {
+		test("parses multiple markers, case-insensitive", () => {
+			assert.deepEqual(extractDoneSteps("[DONE:1] [done:2] [DONE:ALL]"), [1, 2, "all"]);
+		});
 
-	test("supports * wildcard", () => {
-		assert.deepEqual(extractDoneSteps("[DONE:*]"), ["all"]);
-	});
+		test("supports * wildcard", () => {
+			assert.deepEqual(extractDoneSteps("[DONE:*]"), ["all"]);
+		});
 
-	test("ignores non-marker text", () => {
-		assert.deepEqual(extractDoneSteps("no markers here"), []);
+		test("ignores non-marker text", () => {
+			assert.deepEqual(extractDoneSteps("no markers here"), []);
+		});
+
+		test("ignores markers inside range expressions (prose examples)", () => {
+			assert.deepEqual(extractDoneSteps("from [DONE:1]~[DONE:5] markers"), []);
+			assert.deepEqual(extractDoneSteps("[DONE:1]-[DONE:3]"), []);
+			assert.deepEqual(extractDoneSteps("[DONE:5]~ continues"), []);
+		});
+
+		test("still parses standalone markers adjacent to text", () => {
+			assert.deepEqual(extractDoneSteps("Step 3 done [DONE:3]"), [3]);
+			assert.deepEqual(extractDoneSteps("[DONE:all] everything"), ["all"]);
+		});
 	});
-});
 
 describe("markCompletedSteps", () => {
 	const items = () => [
