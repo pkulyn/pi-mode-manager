@@ -30,7 +30,7 @@ import { extractTodoItems, markCompletedSteps, columnarize, type TodoItem } from
 
 type Mode = "plan" | "auto" | "edit";
 
-const MODE_CYCLE: Mode[] = ["plan", "auto", "edit"];
+const MODE_CYCLE: Mode[] = ["auto", "plan", "edit"];
 
 const READ_TOOLS = ["read", "grep", "find", "ls"];
 const WRITE_TOOLS = ["edit", "write"];
@@ -161,7 +161,7 @@ function uniqueToolNames(toolNames: string[]): string[] {
 
 export default function modeManagerExtension(pi: ExtensionAPI): void {
 	let enabled = false;
-	let mode: Mode = "plan";
+	let mode: Mode = "auto";
 	let todoItems: TodoItem[] = [];
 	let toolsBeforeModeManager: string[] | undefined;
 	let planExtractedAt: number | undefined;
@@ -324,7 +324,7 @@ export default function modeManagerExtension(pi: ExtensionAPI): void {
 			toolsBeforeModeManager = pi.getActiveTools();
 		}
 		enabled = true;
-		mode = "plan";
+		mode = "auto";
 		todoItems = [];
 		planExtractedAt = undefined;
 		allDoneNotified = false;
@@ -335,7 +335,7 @@ export default function modeManagerExtension(pi: ExtensionAPI): void {
 		// captured by agent_end during Plan mode instead.
 		applyModeTools();
 		ctx.ui.notify(
-			"Plan mode ON. Alt+M: switch Plan→Auto→Edit. /plan: exit.",
+			"Mode manager ON. Alt+M: switch Auto→Plan→Edit. /plan: exit.",
 			"info",
 		);
 		updateStatus(ctx);
@@ -345,7 +345,7 @@ export default function modeManagerExtension(pi: ExtensionAPI): void {
 	function disableModeManager(ctx: ExtensionContext): void {
 		if (!enabled) return;
 		enabled = false;
-		mode = "plan";
+		mode = "auto";
 		todoItems = [];
 		if (toolsBeforeModeManager !== undefined) {
 			pi.setActiveTools(toolsBeforeModeManager);
@@ -534,10 +534,10 @@ export default function modeManagerExtension(pi: ExtensionAPI): void {
 	// -----------------------------------------------------------------------
 
 	pi.on("session_start", async (_event, ctx) => {
-		if (pi.getFlag("plan") === true) {
-			enabled = true;
-			mode = "plan";
-		}
+		// Default: mode-manager auto-starts with every pi launch in Auto mode.
+		// The --plan flag overrides the startup mode to Plan.
+		enabled = true;
+		mode = pi.getFlag("plan") === true ? "plan" : "auto";
 
 		const entries = ctx.sessionManager.getEntries();
 		const modeManagerEntry = entries
@@ -547,8 +547,9 @@ export default function modeManagerExtension(pi: ExtensionAPI): void {
 			.pop() as { data?: ModeManagerState } | undefined;
 
 		if (modeManagerEntry?.data) {
-			enabled = modeManagerEntry.data.enabled ?? enabled;
-			mode = modeManagerEntry.data.mode ?? mode;
+			// Restore progress and the pre-mode-manager toolset. `enabled` and
+			// `mode` are NOT restored: the manager auto-starts in Auto mode on
+			// every launch (unless --plan), so a manual /plan-off does not persist.
 			todoItems = modeManagerEntry.data.todos ?? todoItems;
 			toolsBeforeModeManager = modeManagerEntry.data.toolsBeforeModeManager ?? toolsBeforeModeManager;
 			planExtractedAt = modeManagerEntry.data.planExtractedAt;
@@ -558,19 +559,18 @@ export default function modeManagerExtension(pi: ExtensionAPI): void {
 			rebuildCompletionState(ctx);
 		} else {
 			// No persisted state (first run, or the entry was lost): fall back
-			// to scanning history for the latest plan. When a state entry IS
-			// present we deliberately do NOT scan history — an unsolicited scan
-			// picks up ordinary discussion that merely mentions "Plan:"/
-			// Todolist/checkbox syntax and fabricates a bogus todo widget. A
-			// plan captured during Plan mode is always persisted by agent_end,
-			// so a restored-but-empty state means there was no plan, not that
-			// we lost one.
+			// to scanning history for the latest plan. Marker-based parsing
+			// (only <todo> blocks) makes this safe — ordinary prose that merely
+			// mentions plan/todo syntax can never be mistaken for a plan.
 			recoverPlanFromHistory(ctx);
 		}
 
-		if (enabled) {
-			applyModeTools();
+		// Auto mode restores the pre-mode-manager toolset; capture it now so a
+		// full toolset is preserved (never []).
+		if (toolsBeforeModeManager === undefined) {
+			toolsBeforeModeManager = pi.getActiveTools();
 		}
+		applyModeTools();
 		updateStatus(ctx);
 	});
 }
