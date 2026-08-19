@@ -63,39 +63,22 @@ function parseTodoSection(section: string): TodoItem[] {
 
 /** Extract todo items from an assistant message.
  *
- * Primary (strict): an explicit <todo>...</todo> block. When a block is
- * present and yields items, ONLY the block is parsed — anything outside the
- * tags is ignored, so ordinary prose that merely discusses plan/todo syntax
- * can never be mistaken for a plan. This is the format the Plan-mode
- * instructions tell the model to emit, so mis-detection is structurally
- * impossible for well-behaved output.
+ * ONLY an explicit <todo>...</todo> block is parsed. When a block is present
+ * and yields items, ONLY the block is used — anything outside the tags is
+ * ignored, so ordinary prose that merely discusses plan/todo syntax can
+ * never be mistaken for a plan. Returns [] when there is no block or the
+ * block contains no parseable items.
  *
- * Fallback (legacy heuristics): when there is no <todo> block, or the block
- * contains no parseable items, fall back to the legacy header-based parsing
- * ("Plan:" / Todolist / 任务清单 / 待办事项 / 待办清单 headers, optionally
- * prefixed by heading markers or a Chinese section number, plus numbered or
- * checkbox lines). Kept for compatibility with pre-marker messages and
- * agents that did not follow the marker instruction; it carries the same
- * false-positive risk as before, which is why the recovery path additionally
- * requires MIN_RECOVERABLE_PLAN_ITEMS items (see index.ts).
+ * This is the format the Plan-mode instructions tell the model to emit
+ * (marker convention), so mis-detection is structurally impossible for
+ * well-behaved output. Legacy header heuristics ("Plan:" / Todolist /
+ * checkbox guessing) were deliberately removed: no regex can exhaust all
+ * LLM output formats, and any fallback reintroduces the false-positive risk.
  */
 export function extractTodoItems(message: string): TodoItem[] {
 	const block = extractTodoBlock(message);
-	if (block !== null) {
-		const items = parseTodoSection(block);
-		if (items.length > 0) return items;
-	}
-	return parseLegacyTodo(message);
-}
-
-/** Legacy heuristic parsing (see extractTodoItems fallback). */
-function parseLegacyTodo(message: string): TodoItem[] {
-	const headerPattern =
-		/^\s*(?:#{1,6}\s*)?\*{0,2}(?:[一二三四五六七八九十\d]+[、.．]\s*)?(?:Plan\s*:|Todolist|任务清单|待办事项|待办清单)[^\n]*$/im;
-	const headerMatch = message.match(headerPattern);
-	if (!headerMatch) return [];
-	const planSection = message.slice(message.indexOf(headerMatch[0]) + headerMatch[0].length);
-	return parseTodoSection(planSection);
+	if (block === null) return [];
+	return parseTodoSection(block);
 }
 
 /** Strip ANSI escape sequences (256-color etc). */

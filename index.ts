@@ -128,18 +128,10 @@ function getTextContent(message: AssistantMessage): string {
 		.join("\n");
 }
 
-/** Minimum extracted items for a history message to be treated as a
- * recoverable plan. Guards recoverPlanFromHistory/scanForLatestPlan against
- * false positives: an assistant message that merely discusses "Plan:"/
- * Todolist/checkbox syntax (e.g. explaining the parser) can yield a handful
- * of checkbox lines (a real incident produced 4 bogus items), while a real
- * plan is a dense list (the widget's two-column layout needs ≥6 to be
- * meaningful; realistic plans have 5+). The hot path (agent_end capture in
- * Plan mode) keeps the loose `> 0` check — this threshold only gates the
- * history-recovery fallback. */
-const MIN_RECOVERABLE_PLAN_ITEMS = 5;
-
-/** Find the most recent assistant message containing a "Plan:" list. */
+/** Find the most recent assistant message containing an explicit <todo>
+ * block. Extraction is marker-based (only <todo>...</todo> is parsed), so
+ * any extracted items are a genuine plan — no extra confidence threshold is
+ * needed. */
 function scanForLatestPlan(ctx: ExtensionContext): { items: TodoItem[]; afterIndex: number } | null {
 	const entries = ctx.sessionManager.getEntries();
 	for (let i = entries.length - 1; i >= 0; i--) {
@@ -151,7 +143,7 @@ function scanForLatestPlan(ctx: ExtensionContext): { items: TodoItem[]; afterInd
 		) {
 			const text = getTextContent(entry.message as AssistantMessage);
 			const extracted = extractTodoItems(text);
-			if (extracted.length >= MIN_RECOVERABLE_PLAN_ITEMS) {
+			if (extracted.length > 0) {
 				return { items: extracted, afterIndex: i + 1 };
 			}
 		}

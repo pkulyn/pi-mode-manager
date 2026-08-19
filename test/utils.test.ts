@@ -87,129 +87,32 @@ describe("extractTodoItems", () => {
 		assert.equal(items[1].text, "真实计划第二步");
 	});
 
-	test("falls back to legacy parsing when no <todo> block exists", () => {
-		const msg = "Plan:\n1. Read the config file\n2. Update the parser";
-		const items = extractTodoItems(msg);
-		assert.equal(items.length, 2);
-		assert.equal(items[0].text, "Config file");
-	});
-
-	test("falls back to legacy parsing when the <todo> block has no parseable items", () => {
-		const msg = "<todo>\njust some prose, no numbered/checkbox lines\n</todo>\n\nTodolist\n1. Legacy step";
-		const items = extractTodoItems(msg);
-		assert.equal(items.length, 1);
-		assert.equal(items[0].text, "Legacy step");
-	});
-
-	test("extracts numbered steps after a Plan: header", () => {
-		const msg = "Here is my plan\n\nPlan:\n1. Read the config file\n2. Update the parser\n3. Write tests";
-		const items = extractTodoItems(msg);
-		assert.equal(items.length, 3);
+	test("returns [] when no <todo> block exists, even for plan-looking prose (legacy removed)", () => {
+		// 旧格式已不再被解析 —— 只认 <todo> 块；讨论/旧 plan 一律不误判
+		assert.deepEqual(extractTodoItems("Plan:\n1. Read the config file\n2. Update the parser"), []);
 		assert.deepEqual(
-			items.map((i) => i.step),
-			[1, 2, 3],
+			extractTodoItems("## 三、Todolist（执行顺序）\n[ ] A1 解析 4 个源文件，输出字段映射\n[ ] A2 党员基线重建，落库 670 人"),
+			[],
 		);
-		assert.equal(items[0].text, "Config file"); // leading verb "Read the " is stripped
-		assert.equal(items[0].completed, false);
-	});
-
-	test("ignores non-numbered lines", () => {
-		const msg = "Plan:\n- not a numbered step\nSome prose\n1. A real step";
-		const items = extractTodoItems(msg);
-		assert.equal(items.length, 1);
-		assert.equal(items[0].text, "A real step");
-	});
-
-	test("returns empty when no Plan: header", () => {
+		assert.deepEqual(extractTodoItems("- [ ] no header here\n- [ ] still no header"), []);
 		assert.deepEqual(extractTodoItems("Just some text 1. numbered but no header"), []);
 	});
 
-	test("supports bold header and parenthesized numbering", () => {
-		const msg = "**Plan:**\n1) Setup environment\n2) Install dependencies";
-		const items = extractTodoItems(msg);
-		assert.equal(items.length, 2);
-		assert.equal(items[1].text, "Dependencies"); // leading verb "Install " is stripped
+	test("returns [] when the <todo> block has no parseable items", () => {
+		const msg = "<todo>\njust some prose, no numbered/checkbox lines\n</todo>";
+		assert.deepEqual(extractTodoItems(msg), []);
 	});
 
-	test("drops short, command, and dash-prefixed lines", () => {
-		const msg = "Plan:\n1. ok\n2. no\n3. /command\n4. - dash\n5. `code`";
-		const items = extractTodoItems(msg);
-		assert.equal(items.length, 0); // all filtered: too short, command, dash, code
+	test("drops short, command, and dash-prefixed lines inside a <todo> block", () => {
+		const msg = "<todo>\n1. ok\n2. no\n3. /command\n4. - dash\n5. `code`\n</todo>";
+		assert.deepEqual(extractTodoItems(msg), []); // all filtered: too short, command, dash, code
 	});
 
-	test("collects numbered lines from the first Plan: header onward", () => {
-		const msg = "Plan:\n1. Old step\n\nPlan:\n1. New step A\n2. New step B";
-		const items = extractTodoItems(msg);
-		// Semantics: everything after the first Plan: header is one plan section;
-		// later numbered lines are appended (revisions are rare in one message).
-		assert.equal(items.length, 3);
-		assert.equal(items[0].text, "Old step");
-	});
-
-	test("accepts a same-line title after Plan: (## Plan: <title>)", () => {
-		const msg = "## Plan: ework 收尾 + AGENTS.md 精简\n\n1. **删除已失效的 JWT 文件**\n2. **AGENTS.md 新增保密章节**\n3. 同步更新记忆文档";
-		const items = extractTodoItems(msg);
-		assert.equal(items.length, 3);
-		assert.deepEqual(
-			items.map((i) => i.step),
-			[1, 2, 3],
-		);
-		assert.equal(items[0].text, "删除已失效的 JWT 文件");
-	});
-
-	test("extracts checkbox steps under a Todolist header with Chinese section number", () => {
-		const msg = [
-			"## 一、背景",
-			"Some prose here.",
-			"",
-			"## 三、Todolist（执行顺序）",
-			"",
-			"```",
-			"[ ] A1 解析 4 个源文件，输出字段映射",
-			"[ ] A2 党员基线重建，落库 670 人",
-			"[ ] B1 知识库 seed 降级入库",
-			"[ ] 收尾：全量验证 + 更新 memory.md",
-			"```",
-			"",
-			"## 四、风险提示",
-			"- 注意外键关联，任何一步不符即回滚",
-		].join("\n");
-		const items = extractTodoItems(msg);
-		assert.equal(items.length, 4);
-		assert.deepEqual(
-			items.map((i) => i.step),
-			[1, 2, 3, 4],
-		);
-		assert.equal(items[0].text, "A1 解析 4 个源文件，输出字段映射");
-		assert.equal(items[0].completed, false);
-		assert.equal(items[3].text, "收尾：全量验证 + 更新 memory.md");
-	});
-
-	test("supports bullet-checkbox and keeps done state ([x])", () => {
-		const msg = "Todolist\n- [x] Already done step\n- [ ] Pending step";
-		const items = extractTodoItems(msg);
-		assert.equal(items.length, 2);
-		assert.equal(items[0].completed, true);
-		assert.equal(items[1].completed, false);
-		assert.equal(items[1].text, "Pending step");
-	});
-
-	test("supports 任务清单 header", () => {
-		const msg = "## 三、任务清单\n[ ] 准备开发环境\n[ ] 编写核心代码";
-		const items = extractTodoItems(msg);
-		assert.equal(items.length, 2);
-		assert.equal(items[0].text, "准备开发环境");
-	});
-
-	test("checkbox lines without a recognized header are ignored", () => {
-		assert.deepEqual(extractTodoItems("- [ ] no header here\n- [ ] still no header"), []);
-	});
-
-	test("prose with brackets but no checkbox syntax is not matched", () => {
-		const msg = "Plan:\n- use [config] as the source of truth\n1. Real numbered step";
+	test("parses the first <todo> block when multiple exist", () => {
+		const msg = "<todo>\n1. First block A\n</todo>\n\n<todo>\n1. Second block B\n</todo>";
 		const items = extractTodoItems(msg);
 		assert.equal(items.length, 1);
-		assert.equal(items[0].text, "Real numbered step");
+		assert.equal(items[0].text, "First block A");
 	});
 });
 
