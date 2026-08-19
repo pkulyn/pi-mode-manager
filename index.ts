@@ -64,14 +64,24 @@ Restrictions (enforced by hard gate):
 Before planning, explore the codebase to understand the problem.
 Ask clarifying questions with the questionnaire tool if needed.
 
-Then produce a detailed numbered plan under a "Plan:" header:
+Then produce a detailed plan in prose, and wrap the executable todo list
+in a <todo> block — one item per line (numbered "1."/"1)" or checkbox
+"- [ ]"/"[ ]"):
 
 # Short plan title
 
-Plan:
+<todo>
 1. First step description
 2. Second step description
 ...
+</todo>
+
+RULES FOR THE <todo> BLOCK:
+- The <todo> and </todo> tags must each be on their own line.
+- Only the todo items belong inside the tags; no prose inside the block.
+- Do NOT use <todo> tags anywhere else in your response. The todo widget
+  parses ONLY the <todo> block — a stray <todo> block in prose would be
+  captured as a plan and shown in the status bar.
 
 EXECUTION RULES:
 - Do NOT start executing the plan on your own.

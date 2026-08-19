@@ -5,6 +5,7 @@ import {
 	columnarize,
 	displayWidth,
 	extractDoneSteps,
+	extractTodoBlock,
 	extractTodoItems,
 	markCompletedSteps,
 	stripAnsi,
@@ -12,10 +13,94 @@ import {
 } from "../utils.ts";
 
 // ---------------------------------------------------------------------------
+// extractTodoBlock
+// ---------------------------------------------------------------------------
+
+describe("extractTodoBlock", () => {
+	test("extracts inner text of a <todo> block", () => {
+		const msg = "prose\n\n<todo>\n1. A\n2. B\n</todo>\n\ntrailing";
+		assert.equal(extractTodoBlock(msg), "\n1. A\n2. B\n");
+	});
+
+	test("returns null when no block exists", () => {
+		assert.equal(extractTodoBlock("no todo block here"), null);
+	});
+
+	test("returns null when the block is unclosed", () => {
+		assert.equal(extractTodoBlock("<todo>\n1. A\n"), null);
+	});
+});
+
+// ---------------------------------------------------------------------------
 // extractTodoItems
 // ---------------------------------------------------------------------------
 
 describe("extractTodoItems", () => {
+	test("parses numbered items inside a <todo> block", () => {
+		const msg = [
+			"Here is my approach.",
+			"",
+			"<todo>",
+			"1. Fix the login bug",
+			"2. Add regression tests",
+			"3. Update docs",
+			"</todo>",
+		].join("\n");
+		const items = extractTodoItems(msg);
+		assert.equal(items.length, 3);
+		assert.deepEqual(
+			items.map((i) => i.step),
+			[1, 2, 3],
+		);
+		assert.equal(items[0].text, "Fix the login bug");
+		assert.equal(items[0].completed, false);
+	});
+
+	test("parses checkbox items inside a <todo> block, keeping done state", () => {
+		const msg = "<todo>\n- [x] Already done\n- [ ] Pending task\n</todo>";
+		const items = extractTodoItems(msg);
+		assert.equal(items.length, 2);
+		assert.equal(items[0].completed, true);
+		assert.equal(items[0].text, "Already done");
+		assert.equal(items[1].completed, false);
+		assert.equal(items[1].text, "Pending task");
+	});
+
+	test("ignores todo-looking content OUTSIDE an existing <todo> block (anti false-positive)", () => {
+		const msg = [
+			"## 三、Todolist（执行顺序）",
+			"[ ] A1 解析 4 个源文件，输出字段映射",
+			"[ ] A2 党员基线重建，落库 670 人",
+			"[ ] B1 知识库 seed 降级入库",
+			"",
+			"<todo>",
+			"1. 真实计划第一步",
+			"2. 真实计划第二步",
+			"</todo>",
+			"",
+			"3. 原有 Plan: + 数字序号（正文里的编号，不属于 todo）",
+		].join("\n");
+		const items = extractTodoItems(msg);
+		// 只应解析 <todo> 块内的 2 项；块外的 checkbox/编号/讨论全部忽略
+		assert.equal(items.length, 2);
+		assert.equal(items[0].text, "真实计划第一步");
+		assert.equal(items[1].text, "真实计划第二步");
+	});
+
+	test("falls back to legacy parsing when no <todo> block exists", () => {
+		const msg = "Plan:\n1. Read the config file\n2. Update the parser";
+		const items = extractTodoItems(msg);
+		assert.equal(items.length, 2);
+		assert.equal(items[0].text, "Config file");
+	});
+
+	test("falls back to legacy parsing when the <todo> block has no parseable items", () => {
+		const msg = "<todo>\njust some prose, no numbered/checkbox lines\n</todo>\n\nTodolist\n1. Legacy step";
+		const items = extractTodoItems(msg);
+		assert.equal(items.length, 1);
+		assert.equal(items[0].text, "Legacy step");
+	});
+
 	test("extracts numbered steps after a Plan: header", () => {
 		const msg = "Here is my plan\n\nPlan:\n1. Read the config file\n2. Update the parser\n3. Write tests";
 		const items = extractTodoItems(msg);
