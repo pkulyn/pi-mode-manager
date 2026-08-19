@@ -185,8 +185,11 @@ export default function modeManagerExtension(pi: ExtensionAPI): void {
 	}
 
 	function getEditModeTools(activeToolNames: string[]): string[] {
+		// Keep bash in the toolset — per-command approval is enforced by the
+		// tool_call gate below. Removing it here made bash simply unavailable
+		// in Edit mode instead of "available with approval".
 		return uniqueToolNames([
-			...activeToolNames.filter((name) => name !== "bash"),
+			...activeToolNames,
 			...READ_TOOLS,
 			...WRITE_TOOLS,
 		]);

@@ -1,6 +1,6 @@
 {
   "name": "pi-mode-manager",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Claude Code-style Plan/Auto/Edit mode manager for pi coding agent",
   "type": "module",
   "license": "MIT",
@@ -27,6 +27,8 @@
     "test": "node --test \"test/**/*.test.ts\""
   },
   "pi": {
-    "extensions": ["./index.ts"]
+    "extensions": [
+      "./index.ts"
+    ]
   }
 }
