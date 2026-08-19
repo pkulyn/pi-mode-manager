@@ -20,14 +20,14 @@ The live todo widget sits below the editor: a `Plan (2/5)` heading on a timeline
 
 ## Features
 
-- 🔄 **`Alt+M`** cycles modes: Plan → Auto → Edit
+- 🔄 **`Alt+M`** cycles modes: Auto → Plan → Edit
 - 🔒 **Hard gate** on tool calls — Plan mode rejects `edit`/`write`/`bash` before the agent sees them; Edit mode prompts for bash approval
 - 📋 **Live todo widget** (below the editor) — numbered plan steps with progress counter (`Plan (2/5)`), pending/current/done glyphs (`◐`/`○`/`✓`) **colored to match the active mode** (teal in Plan, orange-red in Auto, blue in Edit), auto-hides when the plan completes
 - ✨ **Two-column layout** — todo lists > 5 items split into side-by-side columns (CJK-width aware, truncation-safe)
 - ✅ **`[DONE:n]` protocol** — cumulative semantics: `[DONE:3]` marks steps 1–3 complete; `[DONE:all]`/`[DONE:*]` marks everything
 - 🧠 **Mode instructions injected into context** — the agent knows which mode is active and what its rules are
-- 💾 **Session persistence** — mode + todos survive restarts; plans are recovered from session history even if the extension was enabled after the plan was written
-- ⌨️ **`/plan` toggle** and `--plan` CLI flag (start pi already in Plan mode)
+- 💾 **Session persistence** — todos survive restarts (the manager always auto-starts in Auto mode unless `--plan`); plans are recovered from session history even if the extension was enabled after the plan was written
+- ⌨️ **`/plan` toggle** and `--plan` CLI flag (start pi directly in Plan mode); the manager **auto-starts in Auto mode** on every launch, no manual enabling needed
 
 ## Installation
 
@@ -56,14 +56,14 @@ The extension auto-loads on the next pi session. Requires **pi ≥ 0.80** and **
 | Action | Result |
 |--------|--------|
 | `/plan` | Toggle mode manager on/off |
-| `Alt+M` | Cycle mode: Plan → Auto → Edit |
+| `Alt+M` | Cycle mode: Auto → Plan → Edit |
 | `/todos` | Show the current plan todo list |
 | `pi --plan` | Start pi with Plan mode already active |
 
 ### Workflow
 
-1. Start with `/plan` (or `--plan`). You are in **Plan** mode: the agent explores the codebase and produces a numbered plan under a `Plan:` header. Tools that modify anything are blocked.
-2. Press `Alt+M` to switch to **Auto** (execute directly) or **Edit** (focused editing, bash asks permission).
+1. pi starts with the mode manager **auto-enabled in Auto mode** (or `pi --plan` to start directly in Plan mode). Press `Alt+M` to enter **Plan**: the agent explores the codebase and produces a plan wrapped in a `<todo>` block. Tools that modify anything are blocked.
+2. Press `Alt+M` to cycle **Auto → Plan → Edit → Auto**: **Auto** executes directly, **Edit** is focused editing with bash approval.
 3. As the agent executes each step it reports `[DONE:n]`. The todo widget ticks up `(1/5) → (5/5)` and collapses with a 🎉 notification when the plan is done.
 
 ### Tool access matrix
