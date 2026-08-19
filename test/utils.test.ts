@@ -255,20 +255,20 @@ describe("truncateToWidth", () => {
 
 	test("truncates with ellipsis, CJK-aware", () => {
 		const out = truncateToWidth("abcdefghij", 5);
-		assert.equal(out, "abcd\x1b[0m…");
+		assert.equal(out, "abcd\x1b[0m…\x1b[0m");
 		assert.ok(displayWidth(out) <= 5);
 	});
 
 	test("does not split a wide char across the cut", () => {
 		const out = truncateToWidth("a中bcdef", 4);
-		assert.equal(out, "a中\x1b[0m…"); // a(1) + 中(2) fits in 3, b would exceed
+		assert.equal(out, "a中\x1b[0m…\x1b[0m"); // a(1) + 中(2) fits in 3, b would exceed
 		assert.ok(displayWidth(out) <= 4);
 	});
 
 	test("preserves ANSI sequences across the cut", () => {
 		const out = truncateToWidth("\x1b[38;5;130mabcdefghij", 6);
 		assert.ok(out.startsWith("\x1b[38;5;130m"));
-		assert.ok(out.endsWith("\x1b[0m…"));
+		assert.ok(out.endsWith("…\x1b[0m"));
 	});
 });
 

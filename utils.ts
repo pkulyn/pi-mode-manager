@@ -3,6 +3,8 @@
  * Extracted for testability.
  */
 
+import { visibleWidth, truncateToWidth as tuiTruncateToWidth } from "@earendil-works/pi-tui";
+
 export interface TodoItem {
 	step: number;
 	text: string;
@@ -86,13 +88,12 @@ export function stripAnsi(text: string): string {
 	return text.replace(/\x1b\[[0-9;]*m/g, "");
 }
 
-/** Display width: CJK/wide chars count as 2 columns. */
+/** Display width: delegate to pi-tui's visibleWidth (CJK + emoji aware) so
+ * layout math matches the widget renderer exactly. This fixes right-column
+ * misalignment when a line contains emoji (e.g. 🎉) that terminals render at
+ * 2 cells but a hand-rolled regex counted as 1. */
 export function displayWidth(text: string): number {
-	let w = 0;
-	for (const ch of stripAnsi(text)) {
-		w += /[\u2E80-\u9FFF\uF900-\uFAFF\uFF00-\uFFEF]/.test(ch) ? 2 : 1;
-	}
-	return w;
+	return visibleWidth(text);
 }
 
 /**
@@ -120,30 +121,10 @@ export function columnarize(lines: string[], maxSingleColumn: number, maxColWidt
 	return out;
 }
 
-/** Truncate a line to the given display width (CJK-aware, ANSI-preserving). */
+/** Truncate a line to the given display width (CJK + emoji aware, ANSI-preserving).
+ * Delegates to pi-tui's truncateToWidth so width semantics match rendering. */
 export function truncateToWidth(text: string, maxWidth: number): string {
-	if (displayWidth(text) <= maxWidth) return text;
-	let out = "";
-	let w = 0;
-	let i = 0;
-	while (i < text.length) {
-		const ch = text[i];
-		if (ch === "\x1b") {
-			const m = text.slice(i).match(/^\x1b\[[0-9;]*m/);
-			if (m) {
-				out += m[0];
-				i += m[0].length;
-				continue;
-			}
-		}
-		const cw = /[\u2E80-\u9FFF\uF900-\uFAFF\uFF00-\uFFEF]/.test(ch) ? 2 : 1;
-		if (w + cw > maxWidth - 1) break;
-		out += ch;
-		w += cw;
-		i++;
-	}
-	// Reset any unterminated style sequences introduced before the cut point
-	return `${out}\x1b[0m…`;
+	return tuiTruncateToWidth(text, maxWidth, "…");
 }
 
 /** Extract [DONE:n] / [DONE:all] markers from an assistant message.
