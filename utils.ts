@@ -30,27 +30,43 @@ export function cleanStepText(text: string): string {
 	return cleaned;
 }
 
-/** Extract numbered plan steps from a "Plan:" section. */
+/** Extract plan steps from a "Plan:" section or a Todolist/任务清单 checklist.
+ *
+ * Supported headers (optionally prefixed by a heading marker and/or a Chinese
+ * section number, e.g. "## 三、Todolist（执行顺序）"):
+ *   - "Plan:" / "## Plan: <title>"
+ *   - "Todolist" / "任务清单" / "待办事项" / "待办清单"
+ *
+ * Supported item syntax:
+ *   - numbered: "1. step" / "1) step"
+ *   - checkbox: "- [ ] step" / "[ ] step" / "- [x] step" (done state kept)
+ */
 export function extractTodoItems(message: string): TodoItem[] {
 	const items: TodoItem[] = [];
-	const headerMatch = message.match(/\*{0,2}Plan:\*{0,2}[^\n]*\n/i);
+	const headerPattern =
+		/^\s*(?:#{1,6}\s*)?\*{0,2}(?:[一二三四五六七八九十\d]+[、.．]\s*)?(?:Plan\s*:|Todolist|任务清单|待办事项|待办清单)[^\n]*$/im;
+	const headerMatch = message.match(headerPattern);
 	if (!headerMatch) return items;
 
 	const planSection = message.slice(message.indexOf(headerMatch[0]) + headerMatch[0].length);
 	const numberedPattern = /^\s*(\d+)[.)]\s+\*{0,2}([^*\n]+)/gm;
+	const checkboxPattern = /^\s*(?:[-*]\s+)?\[\s*([ xX]?)\s*\]\s+([^*\n]+)/gm;
 
-	for (const match of planSection.matchAll(numberedPattern)) {
-		const text = match[2]
+	const pushStep = (raw: string, done: boolean): void => {
+		const text = raw
 			.trim()
 			.replace(/\*{1,2}$/, "")
 			.trim();
 		if (text.length > 5 && !text.startsWith("`") && !text.startsWith("/") && !text.startsWith("-")) {
 			const cleaned = cleanStepText(text);
 			if (cleaned.length > 3) {
-				items.push({ step: items.length + 1, text: cleaned, completed: false });
+				items.push({ step: items.length + 1, text: cleaned, completed: done });
 			}
 		}
-	}
+	};
+
+	for (const match of planSection.matchAll(numberedPattern)) pushStep(match[2], false);
+	for (const match of planSection.matchAll(checkboxPattern)) pushStep(match[2], /[xX]/.test(match[1]));
 	return items;
 }
 

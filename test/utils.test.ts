@@ -71,6 +71,61 @@ describe("extractTodoItems", () => {
 		);
 		assert.equal(items[0].text, "删除已失效的 JWT 文件");
 	});
+
+	test("extracts checkbox steps under a Todolist header with Chinese section number", () => {
+		const msg = [
+			"## 一、背景",
+			"Some prose here.",
+			"",
+			"## 三、Todolist（执行顺序）",
+			"",
+			"```",
+			"[ ] A1 解析 4 个源文件，输出字段映射",
+			"[ ] A2 党员基线重建，落库 670 人",
+			"[ ] B1 知识库 seed 降级入库",
+			"[ ] 收尾：全量验证 + 更新 memory.md",
+			"```",
+			"",
+			"## 四、风险提示",
+			"- 注意外键关联，任何一步不符即回滚",
+		].join("\n");
+		const items = extractTodoItems(msg);
+		assert.equal(items.length, 4);
+		assert.deepEqual(
+			items.map((i) => i.step),
+			[1, 2, 3, 4],
+		);
+		assert.equal(items[0].text, "A1 解析 4 个源文件，输出字段映射");
+		assert.equal(items[0].completed, false);
+		assert.equal(items[3].text, "收尾：全量验证 + 更新 memory.md");
+	});
+
+	test("supports bullet-checkbox and keeps done state ([x])", () => {
+		const msg = "Todolist\n- [x] Already done step\n- [ ] Pending step";
+		const items = extractTodoItems(msg);
+		assert.equal(items.length, 2);
+		assert.equal(items[0].completed, true);
+		assert.equal(items[1].completed, false);
+		assert.equal(items[1].text, "Pending step");
+	});
+
+	test("supports 任务清单 header", () => {
+		const msg = "## 三、任务清单\n[ ] 准备开发环境\n[ ] 编写核心代码";
+		const items = extractTodoItems(msg);
+		assert.equal(items.length, 2);
+		assert.equal(items[0].text, "准备开发环境");
+	});
+
+	test("checkbox lines without a recognized header are ignored", () => {
+		assert.deepEqual(extractTodoItems("- [ ] no header here\n- [ ] still no header"), []);
+	});
+
+	test("prose with brackets but no checkbox syntax is not matched", () => {
+		const msg = "Plan:\n- use [config] as the source of truth\n1. Real numbered step";
+		const items = extractTodoItems(msg);
+		assert.equal(items.length, 1);
+		assert.equal(items[0].text, "Real numbered step");
+	});
 });
 
 // ---------------------------------------------------------------------------
