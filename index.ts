@@ -118,6 +118,17 @@ function getTextContent(message: AssistantMessage): string {
 		.join("\n");
 }
 
+/** Minimum extracted items for a history message to be treated as a
+ * recoverable plan. Guards recoverPlanFromHistory/scanForLatestPlan against
+ * false positives: an assistant message that merely discusses "Plan:"/
+ * Todolist/checkbox syntax (e.g. explaining the parser) can yield a handful
+ * of checkbox lines (a real incident produced 4 bogus items), while a real
+ * plan is a dense list (the widget's two-column layout needs ≥6 to be
+ * meaningful; realistic plans have 5+). The hot path (agent_end capture in
+ * Plan mode) keeps the loose `> 0` check — this threshold only gates the
+ * history-recovery fallback. */
+const MIN_RECOVERABLE_PLAN_ITEMS = 5;
+
 /** Find the most recent assistant message containing a "Plan:" list. */
 function scanForLatestPlan(ctx: ExtensionContext): { items: TodoItem[]; afterIndex: number } | null {
 	const entries = ctx.sessionManager.getEntries();
@@ -130,7 +141,7 @@ function scanForLatestPlan(ctx: ExtensionContext): { items: TodoItem[]; afterInd
 		) {
 			const text = getTextContent(entry.message as AssistantMessage);
 			const extracted = extractTodoItems(text);
-			if (extracted.length > 0) {
+			if (extracted.length >= MIN_RECOVERABLE_PLAN_ITEMS) {
 				return { items: extracted, afterIndex: i + 1 };
 			}
 		}
@@ -539,12 +550,17 @@ export default function modeManagerExtension(pi: ExtensionAPI): void {
 			// Re-scan assistant messages after the plan was extracted to rebuild
 			// completion state (cumulative [DONE:n] semantics)
 			rebuildCompletionState(ctx);
+		} else {
+			// No persisted state (first run, or the entry was lost): fall back
+			// to scanning history for the latest plan. When a state entry IS
+			// present we deliberately do NOT scan history — an unsolicited scan
+			// picks up ordinary discussion that merely mentions "Plan:"/
+			// Todolist/checkbox syntax and fabricates a bogus todo widget. A
+			// plan captured during Plan mode is always persisted by agent_end,
+			// so a restored-but-empty state means there was no plan, not that
+			// we lost one.
+			recoverPlanFromHistory(ctx);
 		}
-
-		// Fall back to scanning history for the latest plan (e.g. the state
-		// entry is missing after a restart, or the plan was produced before
-		// mode-manager was enabled)
-		recoverPlanFromHistory(ctx);
 
 		if (enabled) {
 			applyModeTools();
