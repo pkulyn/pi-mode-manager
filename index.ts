@@ -328,8 +328,11 @@ export default function modeManagerExtension(pi: ExtensionAPI): void {
 		todoItems = [];
 		planExtractedAt = undefined;
 		allDoneNotified = false;
-		// Recover a plan produced before mode-manager was enabled
-		recoverPlanFromHistory(ctx);
+		// No history scan on enable: before mode-manager is on, the model has
+		// never received the Plan-mode instructions and so never emitted a
+		// <todo> block — scanning history here could only hit a message that
+		// merely discusses <todo> syntax and fabricate a bogus plan. Plans are
+		// captured by agent_end during Plan mode instead.
 		applyModeTools();
 		ctx.ui.notify(
 			"Plan mode ON. Alt+M: switch Plan→Auto→Edit. /plan: exit.",
@@ -365,8 +368,9 @@ export default function modeManagerExtension(pi: ExtensionAPI): void {
 		}
 		const idx = MODE_CYCLE.indexOf(mode);
 		mode = MODE_CYCLE[(idx + 1) % MODE_CYCLE.length];
-		// Recover a plan when switching modes without one loaded
-		recoverPlanFromHistory(ctx);
+		// No history scan on mode switch (same reasoning as enableModeManager:
+		// a plan is captured by agent_end during Plan mode; scanning history
+		// here risks resurrecting a stray <todo> block from discussion).
 		applyModeTools();
 		ctx.ui.notify(`Mode: ${MODE_LABEL[mode]}`, "info");
 		updateStatus(ctx);
