@@ -1,5 +1,5 @@
 /**
- * Pure utility functions for mode-manager.
+ * Pure utility functions for plan-mode.
  * Extracted for testability.
  */
 

@@ -104,9 +104,9 @@ Work in small steps and verify after each change.`,
 };
 
 const MODE_CONTEXT_TYPES: Record<Mode, string> = {
-	plan: "mode-manager-plan-context",
-	auto: "mode-manager-auto-context",
-	edit: "mode-manager-edit-context",
+	plan: "plan-mode-plan-context",
+	auto: "plan-mode-auto-context",
+	edit: "plan-mode-edit-context",
 };
 
 interface ModeManagerState {
@@ -220,13 +220,13 @@ export default function modeManagerExtension(pi: ExtensionAPI): void {
 
 	function updateStatus(ctx: ExtensionContext): void {
 		if (enabled) {
-			ctx.ui.setStatus("mode-manager", `${MODE_ANSI[mode]}${MODE_LABEL[mode]}${ANSI_RESET}`);
+			ctx.ui.setStatus("plan-mode", `${MODE_ANSI[mode]}${MODE_LABEL[mode]}${ANSI_RESET}`);
 		} else {
-			ctx.ui.setStatus("mode-manager", undefined);
+			ctx.ui.setStatus("plan-mode", undefined);
 		}
 
 		if (!enabled || todoItems.length === 0) {
-			ctx.ui.setWidget("mode-manager-todos", undefined);
+			ctx.ui.setWidget("plan-mode-todos", undefined);
 			return;
 		}
 
@@ -235,7 +235,7 @@ export default function modeManagerExtension(pi: ExtensionAPI): void {
 
 		// All steps done → hide the widget (it no longer conveys progress)
 		if (completed >= todoItems.length) {
-			ctx.ui.setWidget("mode-manager-todos", undefined);
+			ctx.ui.setWidget("plan-mode-todos", undefined);
 			return;
 		}
 
@@ -269,7 +269,7 @@ export default function modeManagerExtension(pi: ExtensionAPI): void {
 		const MAX_SINGLE_COLUMN = 5;
 		const MAX_COL_WIDTH = 36;
 		const laidOutItems = columnarize(itemLines, MAX_SINGLE_COLUMN, MAX_COL_WIDTH);
-		ctx.ui.setWidget("mode-manager-todos", [heading, ...laidOutItems], {
+		ctx.ui.setWidget("plan-mode-todos", [heading, ...laidOutItems], {
 			placement: "belowEditor",
 		});
 	}
@@ -279,7 +279,7 @@ export default function modeManagerExtension(pi: ExtensionAPI): void {
 	// -----------------------------------------------------------------------
 
 	function persistState(): void {
-		pi.appendEntry("mode-manager", {
+		pi.appendEntry("plan-mode", {
 			enabled,
 			mode,
 			todos: todoItems,
@@ -309,7 +309,7 @@ export default function modeManagerExtension(pi: ExtensionAPI): void {
 	}
 
 	// Recover the latest plan from session history when none is loaded (e.g.
-	// the plan was produced before mode-manager was enabled, or the state
+	// the plan was produced before plan-mode was enabled, or the state
 	// entry was lost after a restart). Also rebuilds completion state.
 	function recoverPlanFromHistory(ctx: ExtensionContext): void {
 		if (todoItems.length > 0) return;
@@ -331,7 +331,7 @@ export default function modeManagerExtension(pi: ExtensionAPI): void {
 		todoItems = [];
 		planExtractedAt = undefined;
 		allDoneNotified = false;
-		// No history scan on enable: before mode-manager is on, the model has
+		// No history scan on enable: before plan-mode is on, the model has
 		// never received the Plan-mode instructions and so never emitted a
 		// <todo> block — scanning history here could only hit a message that
 		// merely discusses <todo> syntax and fabricate a bogus plan. Plans are
@@ -537,7 +537,7 @@ export default function modeManagerExtension(pi: ExtensionAPI): void {
 	// -----------------------------------------------------------------------
 
 	pi.on("session_start", async (_event, ctx) => {
-		// Default: mode-manager auto-starts with every pi launch in Auto mode.
+		// Default: plan-mode auto-starts with every pi launch in Auto mode.
 		// The --plan flag overrides the startup mode to Plan.
 		enabled = true;
 		mode = pi.getFlag("plan") === true ? "plan" : "auto";
@@ -545,12 +545,14 @@ export default function modeManagerExtension(pi: ExtensionAPI): void {
 		const entries = ctx.sessionManager.getEntries();
 		const modeManagerEntry = entries
 			.filter(
-				(e: { type: string; customType?: string }) => e.type === "custom" && e.customType === "mode-manager",
+				(e: { type: string; customType?: string }) =>
+					e.type === "custom" &&
+					(e.customType === "plan-mode" || e.customType === "mode-manager"), // legacy key from pre-rename
 			)
 			.pop() as { data?: ModeManagerState } | undefined;
 
 		if (modeManagerEntry?.data) {
-			// Restore progress and the pre-mode-manager toolset. `enabled` and
+			// Restore progress and the pre-plan-mode toolset. `enabled` and
 			// `mode` are NOT restored: the manager auto-starts in Auto mode on
 			// every launch (unless --plan), so a manual /plan-off does not persist.
 			todoItems = modeManagerEntry.data.todos ?? todoItems;
@@ -568,7 +570,7 @@ export default function modeManagerExtension(pi: ExtensionAPI): void {
 			recoverPlanFromHistory(ctx);
 		}
 
-		// Auto mode restores the pre-mode-manager toolset; capture it now so a
+		// Auto mode restores the pre-plan-mode toolset; capture it now so a
 		// full toolset is preserved (never []).
 		if (toolsBeforeModeManager === undefined) {
 			toolsBeforeModeManager = pi.getActiveTools();

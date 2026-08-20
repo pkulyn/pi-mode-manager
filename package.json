@@ -1,12 +1,12 @@
 {
-  "name": "pi-mode-manager",
-  "version": "1.4.1",
+  "name": "plan-mode",
+  "version": "1.5.0",
   "description": "Claude Code-style Plan/Auto/Edit mode manager for pi coding agent",
   "type": "module",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/pkulyn/pi-mode-manager.git"
+    "url": "git+https://github.com/pkulyn/plan-mode.git"
   },
   "keywords": [
     "pi",

@@ -1,4 +1,4 @@
-# pi-mode-manager
+# plan-mode
 
 Claude Code-style **Plan / Auto / Edit** mode manager for the [pi coding agent](https://github.com/earendil-works/pi).
 
@@ -34,10 +34,10 @@ The live todo widget sits below the editor: a `Plan (2/5)` heading on a timeline
 ### From GitHub
 
 ```bash
-pi install git:github.com/pkulyn/pi-mode-manager@v1
+pi install git:github.com/pkulyn/plan-mode@v1
 ```
 
-> ℹ️ **npm**: this package is not published to the npm registry — the name `pi-mode-manager` there belongs to an unrelated project by another author. Install from GitHub above (or manually below) instead.
+> ℹ️ **npm**: this package is not published to the npm registry — the name `plan-mode` there belongs to an unrelated project by another author. Install from GitHub above (or manually below) instead.
 
 ### Manual
 
@@ -45,7 +45,7 @@ Clone the repo and add it to your extension paths in `~/.pi/agent/settings.json`
 
 ```json
 {
-  "extensions": ["/path/to/pi-mode-manager"]
+  "extensions": ["/path/to/plan-mode"]
 }
 ```
 
