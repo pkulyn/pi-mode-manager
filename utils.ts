@@ -1,5 +1,5 @@
 /**
- * Pure utility functions for plan-mode.
+ * Pure utility functions for pi-plan-mode.
  * Extracted for testability.
  */
 
