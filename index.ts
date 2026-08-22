@@ -91,7 +91,16 @@ EXECUTION RULES:
 You are in Auto mode: full tool access. Execute the task directly.
 
 If a plan exists (from Plan mode), execute it in order.
-After completing each step, include the [DONE:n] tag in your response.`,
+After completing each step, include the [DONE:n] tag in your response.
+
+[DONE:n] MARKER SEMANTICS:
+- n is the 1-based step number in the plan's <todo> list (1 = first item).
+- Cumulative: [DONE:n] marks steps 1..n complete. Always use the LATEST
+  step number you reached, NOT a "milestone counter" of your own.
+- Example: after finishing todo items 5 and 6, reply [DONE:6], not [DONE:2].
+- When every item is done, reply [DONE:all] (or the total count).
+- Never write [DONE:n] in prose examples, quotes, or explanations — any
+  [DONE:n] in your message counts, so only use it to actually mark progress.`,
 	edit: `[MODE: EDIT — focused editing]
 You are in Edit mode: focus on locating and modifying code.
 
@@ -100,7 +109,16 @@ You are in Edit mode: focus on locating and modifying code.
 
 If a plan exists (from Plan mode), execute it step by step.
 After completing each step, include the [DONE:n] tag in your response.
-Work in small steps and verify after each change.`,
+Work in small steps and verify after each change.
+
+[DONE:n] MARKER SEMANTICS:
+- n is the 1-based step number in the plan's <todo> list (1 = first item).
+- Cumulative: [DONE:n] marks steps 1..n complete. Always use the LATEST
+  step number you reached, NOT a "milestone counter" of your own.
+- Example: after finishing todo items 5 and 6, reply [DONE:6], not [DONE:2].
+- When every item is done, reply [DONE:all] (or the total count).
+- Never write [DONE:n] in prose examples, quotes, or explanations — any
+  [DONE:n] in your message counts, so only use it to actually mark progress.`,
 };
 
 const MODE_CONTEXT_TYPES: Record<Mode, string> = {
